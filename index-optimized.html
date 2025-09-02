@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="https://public-frontend-cos.metadl.com/mgx/img/favicon.png" type="image/png">
+    <title>MomCare - Expectant Mothers Healthcare Tracker</title>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="preconnect" href="https://public-frontend-cos.metadl.com">
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#ff69b4">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <div class="header-top">
+                    <h1>🤱 MomCare</h1>
+                    <div class="header-controls">
+                        <button id="darkModeToggle" class="icon-btn" title="Toggle Dark Mode">🌙</button>
+                        <button id="fontSizeToggle" class="icon-btn" title="Font Size">🔤</button>
+                        <button id="exportData" class="icon-btn" title="Export Data">📄</button>
+                        <button id="kickCounter" class="icon-btn" title="Kick Counter">👶</button>
+                    </div>
+                </div>
+                <p>Your comprehensive pregnancy journey companion</p>
+                <div class="pregnancy-status" id="pregnancyStatus">
+                    <span id="currentWeek">Week --</span>
+                    <span id="currentTrimester">-- Trimester</span>
+                    <span id="daysLeft">-- days to go</span>
+                </div>
+                <div id="babySize" class="baby-size">👶 Baby is the size of a...</div>
+            </div>
+        </header>
+        <nav class="nav-tabs" role="tablist">
+            <button class="tab-btn active" data-tab="dashboard" aria-selected="true">📊 Dashboard</button>
+            <button class="tab-btn" data-tab="tracking" aria-selected="false">📈 Health Tracking</button>
+            <button class="tab-btn" data-tab="appointments" aria-selected="false">📅 Appointments</button>
+            <button class="tab-btn" data-tab="tools" aria-selected="false">🧠 Tools</button>
+            <button class="tab-btn" data-tab="resources" aria-selected="false">📚 Resources</button>
+            <button class="tab-btn" data-tab="community" aria-selected="false">👥 Community</button>
+            <button class="tab-btn" data-tab="emergency" aria-selected="false">🚨 Emergency</button>
+        </nav>
+        <main class="main-content">
+            <!-- Dashboard Tab -->
+            <section id="dashboard-tab" class="tab-content active" role="tabpanel">
+                <div class="dashboard-grid">
+                    <div class="card welcome-card">
+                        <h2>Welcome Back! 👋</h2>
+                        <div class="setup-section" id="setupSection">
+                            <h3>Let's set up your pregnancy journey</h3>
+                            <div class="form-group">
+                                <label for="dueDate">Expected Due Date: *</label>
+                                <input type="date" id="dueDate" name="dueDate" required>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="firstName">First Name: *</label>
+                                    <input type="text" id="firstName" name="firstName" placeholder="Enter first name" required minlength="2" maxlength="30" pattern="^[a-zA-Z]+$">
+                                </div>
+                                <div class="form-group">
+                                    <label for="lastName">Last Name: *</label>
+                                    <input type="text" id="lastName" name="lastName" placeholder="Enter last name" required minlength="2" maxlength="30" pattern="^[a-zA-Z]+$">
+                                </div>
+                            </div>
+                            <button type="button" class="save-btn">Save Information</button>
+                        </div>
+                        <div class="pregnancy-info" id="pregnancyInfo" hidden>
+                            <h3 id="welcomeName">Hello, Mom!</h3>
+                            <div class="pregnancy-details">
+                                <div class="detail-item">
+                                    <span class="detail-label">Current Week:</span>
+                                    <span class="detail-value" id="dashboardWeek">--</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Trimester:</span>
+                                    <span class="detail-value" id="dashboardTrimester">--</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Due Date:</span>
+                                    <span class="detail-value" id="dashboardDueDate">--</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Days Remaining:</span>
+                                    <span class="detail-value" id="dashboardDaysLeft">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card milestone-card">
+                        <h3>🎯 Current Milestone</h3>
+                        <div id="currentMilestone" class="milestone-content">
+                            <p>Set your due date to see your current milestone!</p>
+                        </div>
+                    </div>
+                    <div class="card quick-stats">
+                        <h3>📊 Quick Stats</h3>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <span class="stat-number" id="totalCheckups">0</span>
+                                <span class="stat-label">Health Checkups</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number" id="nextAppointment">--</span>
+                                <span class="stat-label">Next Appointment</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number" id="lastWeight">--</span>
+                                <span class="stat-label">Last Weight (kg)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card recent-activity">
+                        <h3>📋 Recent Activity</h3>
+                        <div id="recentActivity" class="activity-list">
+                            <p>No recent activity. Start tracking your health!</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <!-- Health Tracking Tab -->
+            <section id="tracking-tab" class="tab-content" role="tabpanel" hidden>
+                <div class="tracking-container">
+                    <div class="card">
+                        <h2>Health Tracking</h2>
+                        <form id="healthTrackingForm" class="health-form" novalidate>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="trackingDate">Date:</label>
+                                    <input type="date" id="trackingDate" name="trackingDate" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="pregnancyWeek">Pregnancy Week: *</label>
+                                    <input type="number" id="pregnancyWeek" name="pregnancyWeek" min="1" max="42" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="currentWeight">Weight (kg): *</label>
+                                    <input type="number" id="currentWeight" name="currentWeight" step="0.1" placeholder="e.g., 65.5" min="30" max="200" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="bloodPressure">Blood Pressure: *</label>
+                                    <input type="text" id="bloodPressure" name="bloodPressure" placeholder="e.g., 120/80" pattern="^[0-9]{2,3}/[0-9]{2,3}$" required>
+                                </div>
+                            </div>
+                            <fieldset class="form-group">
+                                <legend>Symptoms (check all that apply):</legend>
+                                <div class="checkbox-grid">
+                                    <label><input type="checkbox" name="symptoms" value="nausea"> 🤢 Nausea</label>
+                                    <label><input type="checkbox" name="symptoms" value="fatigue"> 😴 Fatigue</label>
+                                    <label><input type="checkbox" name="symptoms" value="back_pain"> 🦴 Back Pain</label>
+                                    <label><input type="checkbox" name="symptoms" value="swelling"> 🦵 Swelling</label>
+                                    <label><input type="checkbox" name="symptoms" value="heartburn"> 🔥 Heartburn</label>
+                                    <label><input type="checkbox" name="symptoms" value="mood_changes"> 😊 Mood Changes</label>
+                                    <label><input type="checkbox" name="symptoms" value="sleep_issues"> 😪 Sleep Issues</label>
+                                    <label><input type="checkbox" name="symptoms" value="contractions"> ⚡ Contractions</label>
+                                </div>
+                            </fieldset>
+                            <div class="form-group">
+                                <label for="babyMovement">Baby Movement:</label>
+                                <select id="babyMovement" name="babyMovement">
+                                    <option value="">Select movement level</option>
+                                    <option value="none">No movement felt yet</option>
+                                    <option value="light">Light movements</option>
+                                    <option value="moderate">Moderate movements</option>
+                                    <option value="active">Very active</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="moodRating">Overall Mood (1-10):</label>
+                                <div class="rating-scale">
+                                    <input type="range" id="moodRating" name="moodRating" min="1" max="10" value="7">
+                                    <div class="rating-labels">
+                                        <span>Low (1)</span>
+                                        <span id="moodValue">7</span>
+                                        <span>Great (10)</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="healthNotes">Additional Notes:</label>
+                                <textarea id="healthNotes" name="healthNotes" placeholder="Any other observations or concerns..." maxlength="500"></textarea>
+                            </div>
+                            <button type="submit" class="submit-btn">Save Health Record</button>
+                        </form>
+                    </div>
+                    <div class="card">
+                        <h3>📈 Health Progress Charts</h3>
+                        <div class="chart-container">
+                            <canvas id="weightChart" width="400" height="200"></canvas>
+                        </div>
+                        <div class="chart-controls">
+                            <button type="button" class="export-btn">📄 Export Data</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <!-- Tools Tab -->
+            <section id="tools-tab" class="tab-content" role="tabpanel" hidden>
+                <div class="tools-container">
+                    <div class="tools-grid">
+                        <div class="tool-card" onclick="openKickCounter()">
+                            <h3>👶 Kick Counter</h3>
+                            <p>Track baby's movements</p>
+                        </div>
+                        <div class="tool-card" onclick="openContractionTimer()">
+                            <h3>⏱️ Contraction Timer</h3>
+                            <p>Time labor contractions</p>
+                        </div>
+                        <div class="tool-card" onclick="openPhotoJournal()">
+                            <h3>📷 Photo Journal</h3>
+                            <p>Track belly progression</p>
+                        </div>
+                        <div class="tool-card" onclick="openSleepTracker()">
+                            <h3>😴 Sleep Tracker</h3>
+                            <p>Monitor sleep quality</p>
+                        </div>
+                        <div class="tool-card" onclick="openNutritionLog()">
+                            <h3>🍎 Nutrition Log</h3>
+                            <p>Track daily meals</p>
+                        </div>
+                        <div class="tool-card" onclick="openRiskAssessment()">
+                            <h3>⚠️ Risk Assessment</h3>
+                            <p>Health risk checker</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <!-- Appointments Tab -->
+            <section id="appointments-tab" class="tab-content" role="tabpanel" hidden>
+                <div class="appointments-container">
+                    <div class="card">
+                        <h2>Appointment Management</h2>
+                        <form id="appointmentForm" class="appointment-form" novalidate>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="appointmentDate">Date:</label>
+                                    <input type="date" id="appointmentDate" name="appointmentDate" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="appointmentTime">Time:</label>
+                                    <input type="time" id="appointmentTime" name="appointmentTime" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="doctorName">Doctor/Provider: *</label>
+                                    <input type="text" id="doctorName" name="doctorName" placeholder="Dr. Smith" required minlength="2" maxlength="100">
+                                </div>
+                                <div class="form-group">
+                                    <label for="appointmentType">Appointment Type:</label>
+                                    <select id="appointmentType" name="appointmentType" required>
+                                        <option value="">Select type</option>
+                                        <option value="routine">Routine Checkup</option>
+                                        <option value="ultrasound">Ultrasound</option>
+                                        <option value="blood_work">Blood Work</option>
+                                        <option value="specialist">Specialist Visit</option>
+                                        <option value="emergency">Emergency Visit</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="appointmentLocation">Location/Clinic:</label>
+                                <input type="text" id="appointmentLocation" name="appointmentLocation" placeholder="Main Medical Center" maxlength="200">
+                            </div>
+                            <div class="form-group">
+                                <label for="appointmentNotes">Notes/Preparation:</label>
+                                <textarea id="appointmentNotes" name="appointmentNotes" placeholder="Things to discuss, questions to ask..." maxlength="500"></textarea>
+                            </div>
+                            <button type="submit" class="submit-btn">Schedule Appointment</button>
+                        </form>
+                    </div>
+                    <div class="card">
+                        <h3>📅 Upcoming Appointments</h3>
+                        <div id="appointmentsList" class="appointments-list">
+                            <p>No appointments scheduled. Add your first appointment above!</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <!-- Resources Tab -->
+            <section id="resources-tab" class="tab-content" role="tabpanel" hidden>
+                <div class="resources-container">
+                    <div class="card">
+                        <h2>📚 Educational Resources</h2>
+                        <div class="trimester-tabs" role="tablist">
+                            <button class="trimester-btn active" data-trimester="first" aria-selected="true">1st Trimester</button>
+                            <button class="trimester-btn" data-trimester="second" aria-selected="false">2nd Trimester</button>
+                            <button class="trimester-btn" data-trimester="third" aria-selected="false">3rd Trimester</button>
+                        </div>
+                        <div id="first-trimester" class="trimester-content active" role="tabpanel">
+                            <h3>First Trimester (Weeks 1-12)</h3>
+                            <div class="resource-grid">
+                                <div class="resource-item">
+                                    <h4>🌱 What to Expect</h4>
+                                    <p>Morning sickness, fatigue, and breast tenderness are common. Your baby's major organs are developing.</p>
+                                </div>
+                                <div class="resource-item">
+                                    <h4>🍎 Nutrition Tips</h4>
+                                    <p>Take prenatal vitamins, eat folate-rich foods, avoid alcohol and raw foods. Stay hydrated.</p>
+                                </div>
+                                <div class="resource-item">
+                                    <h4>⚠️ Warning Signs</h4>
+                                    <p>Severe cramping, heavy bleeding, severe nausea/vomiting. Contact your doctor immediately.</p>
+                                </div>
+                                <div class="resource-item">
+                                    <h4>📋 Appointments</h4>
+                                    <p>First prenatal visit, blood tests, genetic screening discussions, dating ultrasound.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="second-trimester" class="trimester-content" role="tabpanel" hidden>
+                            <h3>Second Trimester (Weeks 13-27)</h3>
+                            <div class="resource-grid">
+                                <div class="resource-item">
+                                    <h4>🌟 What to Expect</h4>
+                                    <p>Energy returns, baby bump shows, you may feel baby's first movements around week 18-20.</p>
+                                </div>
+                                <div class="resource-item">
+                                    <h4>🥗 Nutrition Focus</h4>
+                                    <p>Increase calcium and iron intake. Continue prenatal vitamins. Eat protein-rich foods.</p>
+                                </div>
+                                <div class="resource-item">
+                                    <h4>🏃♀️ Exercise</h4>
+                                    <p>Safe exercises include walking, swimming, prenatal yoga. Avoid contact sports.</p>
+                                </div>
+                                <div class="resource-item">
+                                    <h4>🔍 Tests & Scans</h4>
+                                    <p>Anatomy scan (18-22 weeks), glucose screening, blood pressure monitoring.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="third-trimester" class="trimester-content" role="tabpanel" hidden>
+                            <h3>Third Trimester (Weeks 28-40+)</h3>
+                            <div class="resource-grid">
+                                <div class="resource-item">
+                                    <h4>🤰 What to Expect</h4>
+                                    <p>Baby grows rapidly, you may experience back pain, shortness of breath, and frequent urination.</p>
+                                </div>
+                                <div class="resource-item">
+                                    <h4>🎒 Birth Preparation</h4>
+                                    <p>Pack hospital bag, create birth plan, attend childbirth classes, choose pediatrician.</p>
+                                </div>
+                                <div class="resource-item">
+                                    <h4>⚡ Labor Signs</h4>
+                                    <p>Regular contractions, water breaking, bloody show, back pain. Know when to go to hospital.</p>
+                                </div>
+                                <div class="resource-item">
+                                    <h4>👶 Final Preparations</h4>
+                                    <p>Baby's room setup, car seat installation, newborn care basics, breastfeeding preparation.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <!-- Community Tab -->
+            <section id="community-tab" class="tab-content" role="tabpanel" hidden>
+                <div class="community-container">
+                    <div class="card">
+                        <h2>👥 Community Support</h2>
+                        <div class="community-stats">
+                            <div class="stat-badge">
+                                <span class="stat-number" id="communityMembers">247</span>
+                                <span class="stat-label">Active Members</span>
+                            </div>
+                            <div class="stat-badge">
+                                <span class="stat-number" id="communityPostsCount">89</span>
+                                <span class="stat-label">Posts This Week</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3>💬 Discussion Board</h3>
+                        <div class="post-form">
+                            <textarea id="newPost" placeholder="Share your experience, ask questions, or offer support to other moms..." required minlength="10" maxlength="1000"></textarea>
+                            <button type="button" class="post-btn">Share Post</button>
+                        </div>
+                        <div id="communityPosts" class="posts-container">
+                            <!-- Community posts will be populated here -->
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3>🏆 Support Groups</h3>
+                        <div class="groups-grid">
+                            <div class="group-item">
+                                <h4>First Time Moms</h4>
+                                <p>Connect with other first-time mothers</p>
+                                <span class="member-count">52 members</span>
+                            </div>
+                            <div class="group-item">
+                                <h4>High-Risk Pregnancies</h4>
+                                <p>Support for high-risk pregnancy journeys</p>
+                                <span class="member-count">23 members</span>
+                            </div>
+                            <div class="group-item">
+                                <h4>Working Moms</h4>
+                                <p>Balancing pregnancy and career</p>
+                                <span class="member-count">78 members</span>
+                            </div>
+                            <div class="group-item">
+                                <h4>Teen Moms</h4>
+                                <p>Support for young mothers</p>
+                                <span class="member-count">19 members</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <!-- Emergency Tab -->
+            <section id="emergency-tab" class="tab-content" role="tabpanel" hidden>
+                <div class="emergency-container">
+                    <div class="card emergency-card">
+                        <h2>🚨 Emergency Information</h2>
+                        <div class="emergency-warning">
+                            <p><strong>⚠️ If you're experiencing a medical emergency, call 911 immediately!</strong></p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3>📞 Important Contacts</h3>
+                        <div class="contacts-grid">
+                            <div class="contact-item">
+                                <h4>🏥 Emergency Services</h4>
+                                <p class="contact-number">911</p>
+                                <p>Life-threatening emergencies</p>
+                            </div>
+                            <div class="contact-item">
+                                <h4>👩⚕️ Your OB/GYN</h4>
+                                <p class="contact-number" id="doctorPhone">Add your doctor's number</p>
+                                <button type="button" class="edit-btn">Edit</button>
+                            </div>
+                            <div class="contact-item">
+                                <h4>🏥 Hospital Labor & Delivery</h4>
+                                <p class="contact-number" id="hospitalPhone">Add hospital number</p>
+                                <button type="button" class="edit-btn">Edit</button>
+                            </div>
+                            <div class="contact-item">
+                                <h4>🤱 Lactation Consultant</h4>
+                                <p class="contact-number" id="lactationPhone">Add consultant number</p>
+                                <button type="button" class="edit-btn">Edit</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3>⚠️ When to Seek Immediate Care</h3>
+                        <div class="warning-signs">
+                            <div class="warning-category">
+                                <h4>🩸 Bleeding & Pain</h4>
+                                <ul>
+                                    <li>Heavy vaginal bleeding</li>
+                                    <li>Severe abdominal or pelvic pain</li>
+                                    <li>Severe cramping</li>
+                                    <li>Signs of miscarriage</li>
+                                </ul>
+                            </div>
+                            <div class="warning-category">
+                                <h4>🤒 Severe Symptoms</h4>
+                                <ul>
+                                    <li>High fever (over 101°F)</li>
+                                    <li>Severe headaches</li>
+                                    <li>Vision changes or blurred vision</li>
+                                    <li>Severe swelling of face/hands</li>
+                                </ul>
+                            </div>
+                            <div class="warning-category">
+                                <h4>👶 Baby-Related Concerns</h4>
+                                <ul>
+                                    <li>No fetal movement for 12+ hours</li>
+                                    <li>Decreased fetal movement</li>
+                                    <li>Fluid leaking (possible water breaking)</li>
+                                    <li>Regular contractions before 37 weeks</li>
+                                </ul>
+                            </div>
+                            <div class="warning-category">
+                                <h4>🫁 Breathing & Heart</h4>
+                                <ul>
+                                    <li>Difficulty breathing</li>
+                                    <li>Chest pain</li>
+                                    <li>Rapid heartbeat</li>
+                                    <li>Fainting or dizziness</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        <footer class="footer">
+            <p>© 2024 MomCare - Supporting expectant mothers throughout their pregnancy journey</p>
+            <p><small>This app is for informational purposes only and does not replace professional medical advice.</small></p>
+        </footer>
+    </div>
+    
+    <!-- Modals -->
+    <div id="kickCounterModal" class="modal">
+        <div class="modal-content">
+            <div class="kick-counter">
+                <h2>👶 Kick Counter</h2>
+                <div class="kick-count" id="kickCount">0</div>
+                <button class="kick-btn" onclick="addKick()">👶</button>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="kickProgress"></div>
+                </div>
+                <p>Goal: 10 kicks in 2 hours</p>
+                <button onclick="resetKicks()">Reset</button>
+                <button onclick="closeModal('kickCounterModal')">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="contractionModal" class="modal">
+        <div class="modal-content">
+            <div class="contraction-timer">
+                <h2>⏱️ Contraction Timer</h2>
+                <div class="timer-display" id="contractionTimer">00:00</div>
+                <button id="contractionBtn" onclick="toggleContraction()">Start</button>
+                <div id="contractionLog"></div>
+                <button onclick="closeModal('contractionModal')">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="photoModal" class="modal">
+        <div class="modal-content">
+            <h2>📷 Photo Journal</h2>
+            <div class="photo-upload" onclick="document.getElementById('photoInput').click()">
+                <p>📷 Click to add photo</p>
+                <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="addPhoto(event)">
+            </div>
+            <div class="photo-gallery" id="photoGallery"></div>
+            <button onclick="closeModal('photoModal')">Close</button>
+        </div>
+    </div>
+    
+    <div id="sleepModal" class="modal">
+        <div class="modal-content">
+            <h2>😴 Sleep Tracker</h2>
+            <p>Rate your sleep quality for the past 7 days:</p>
+            <div class="sleep-tracker" id="sleepTracker"></div>
+            <button onclick="closeModal('sleepModal')">Close</button>
+        </div>
+    </div>
+    
+    <div id="nutritionModal" class="modal">
+        <div class="modal-content">
+            <h2>🍎 Nutrition Log</h2>
+            <div class="nutrition-log">
+                <div class="meal-entry">
+                    <input type="text" id="mealInput" placeholder="What did you eat?">
+                    <button onclick="addMeal()">Add</button>
+                </div>
+                <div id="mealList"></div>
+            </div>
+            <button onclick="closeModal('nutritionModal')">Close</button>
+        </div>
+    </div>
+    
+    <div id="riskModal" class="modal">
+        <div class="modal-content">
+            <h2>⚠️ Risk Assessment</h2>
+            <div id="riskQuestions">
+                <div class="form-group">
+                    <label>Severe headache?</label>
+                    <select id="headache">
+                        <option value="no">No</option>
+                        <option value="yes">Yes</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Vision changes?</label>
+                    <select id="vision">
+                        <option value="no">No</option>
+                        <option value="yes">Yes</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Severe swelling?</label>
+                    <select id="swelling">
+                        <option value="no">No</option>
+                        <option value="yes">Yes</option>
+                    </select>
+                </div>
+                <button onclick="assessRisk()">Check Risk</button>
+            </div>
+            <div id="riskResult"></div>
+            <button onclick="closeModal('riskModal')">Close</button>
+        </div>
+    </div>
+    
+    <script src="./script.js"></script>
+</body>
+</html>

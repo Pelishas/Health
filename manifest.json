@@ -1,0 +1,16 @@
+{
+  "name": "MomCare - Pregnancy Tracker",
+  "short_name": "MomCare",
+  "description": "Comprehensive pregnancy journey companion",
+  "start_url": "./index-optimized.html",
+  "display": "standalone",
+  "background_color": "#f5f5f5",
+  "theme_color": "#ff69b4",
+  "icons": [
+    {
+      "src": "https://public-frontend-cos.metadl.com/mgx/img/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
