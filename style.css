@@ -105,6 +105,10 @@ body {
   transform: scale(1.1);
 }
 
+.icon-btn[onclick="signOut()"] {
+  font-size: 0.9rem;
+}
+
 .baby-size {
   margin-top: 1rem;
   padding: 0.5rem 1rem;
