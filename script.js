@@ -1,5 +1,129 @@
 // MomCare JavaScript
 document.addEventListener('DOMContentLoaded', function() {
+    // Always show sign-in modal on page load
+    document.getElementById('signInModal').style.display = 'flex';
+    document.getElementById('mainApp').style.display = 'none';
+    
+    // Authentication functions
+    const signInForm = document.getElementById('signInForm');
+    const signUpForm = document.getElementById('signUpForm');
+    
+    signInForm?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const username = document.getElementById('signInUsername').value.trim();
+        const password = document.getElementById('signInPassword').value;
+        
+        if (!username || !password) {
+            alert('Please enter username and password');
+            return;
+        }
+        
+        const users = JSON.parse(localStorage.getItem('momcare_users') || '{}');
+        const userAccount = Object.values(users).find(user => user.username === username);
+        
+        if (!userAccount) {
+            alert('User does not exist. Please sign up first.');
+            return;
+        }
+        
+        if (atob(userAccount.password) !== password) {
+            alert('Incorrect password');
+            return;
+        }
+        
+        clearAllForms();
+        localStorage.setItem('userSignedIn', 'true');
+        localStorage.setItem('currentUser', username);
+        document.getElementById('signInModal').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
+        
+        loadUserData(username);
+        
+        // Check if profile is complete and redirect accordingly
+        if (!isProfileComplete()) {
+            showProfileTab();
+            alert(`Welcome back, ${userAccount.firstName}! Please complete your profile to access all features.`);
+        } else {
+            alert(`Welcome back, ${userAccount.firstName}!`);
+        }
+    });
+    
+    signUpForm?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const firstName = document.getElementById('signUpFirstName').value.trim();
+        const lastName = document.getElementById('signUpLastName').value.trim();
+        const username = document.getElementById('signUpUsername').value.trim();
+        const countryCode = document.getElementById('countryCode').value;
+        const phoneNumber = document.getElementById('phoneNumber').value.trim();
+        const password = document.getElementById('signUpPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        const birthDay = document.getElementById('birthDay').value;
+        const birthMonth = document.getElementById('birthMonth').value;
+        const birthYear = document.getElementById('birthYear').value;
+        const dateOfBirth = birthDay && birthMonth && birthYear ? `${birthYear}-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}` : '';
+        
+        // Basic validation
+        if (!firstName || !lastName || !username || !countryCode || !phoneNumber || !password || !dateOfBirth) {
+            alert('Please fill in all required fields');
+            return;
+        }
+        
+        if (password !== confirmPassword) {
+            alert('Passwords do not match');
+            return;
+        }
+        
+        if (password.length < 8) {
+            alert('Password must be at least 8 characters long');
+            return;
+        }
+        
+        if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/.test(password)) {
+            alert('Password must contain uppercase, lowercase, number, and special character (@$!%*?&)');
+            return;
+        }
+        
+        if (username.length < 3 || username.length > 20) {
+            alert('Username must be 3-20 characters');
+            return;
+        }
+        
+        const users = JSON.parse(localStorage.getItem('momcare_users') || '{}');
+        
+        // Check if username exists
+        const existingUser = Object.values(users).find(user => user.username === username);
+        if (existingUser) {
+            alert('Username already exists');
+            return;
+        }
+        
+        const phoneKey = countryCode + phoneNumber;
+        const fullName = `${firstName} ${lastName}`;
+        
+        users[phoneKey] = {
+            name: fullName,
+            firstName: firstName,
+            lastName: lastName,
+            username: username,
+            phone: phoneKey,
+            password: btoa(password),
+            dateOfBirth: dateOfBirth,
+            created: new Date().toISOString()
+        };
+        
+        localStorage.setItem('momcare_users', JSON.stringify(users));
+        
+        alert(`Account created successfully! Please sign in with your username and password.`);
+        
+        // Clear the sign-up form
+        document.getElementById('signUpForm').reset();
+        
+        // Redirect to sign-in page
+        document.getElementById('signUpModal').style.display = 'none';
+        document.getElementById('signInModal').style.display = 'flex';
+    });
     // Tab navigation
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
@@ -7,6 +131,14 @@ document.addEventListener('DOMContentLoaded', function() {
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const targetTab = btn.dataset.tab;
+            
+            // Check if profile is complete before allowing access to other tabs
+            if (targetTab !== 'profile' && !isProfileComplete()) {
+                alert('Please complete your profile first before accessing other features.');
+                // Force redirect to profile tab
+                showProfileTab();
+                return;
+            }
             
             // Remove active class from all tabs and buttons
             tabBtns.forEach(b => {
@@ -89,14 +221,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    function validateBirthDate(date) {
+        if (!date) return false;
+        const birthDate = new Date(date);
+        const today = new Date();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return birthDate < today && age >= 9 && age <= 60;
+    }
+    
     saveBtn?.addEventListener('click', function() {
         const dueDateInput = document.getElementById('dueDate');
-        const firstNameInput = document.getElementById('firstName');
-        const lastNameInput = document.getElementById('lastName');
-        
         const dueDate = dueDateInput.value;
-        const firstName = sanitizeInput(firstNameInput.value);
-        const lastName = sanitizeInput(lastNameInput.value);
         
         let isValid = true;
         
@@ -107,31 +246,28 @@ document.addEventListener('DOMContentLoaded', function() {
             clearError(dueDateInput);
         }
         
-        if (!validateName(firstName)) {
-            showError(firstNameInput, 'First name: 2-30 letters only');
-            isValid = false;
-        } else {
-            clearError(firstNameInput);
-        }
-        
-        if (!validateName(lastName)) {
-            showError(lastNameInput, 'Last name: 2-30 letters only');
-            isValid = false;
-        } else {
-            clearError(lastNameInput);
-        }
-        
         if (isValid) {
-            const fullName = `${firstName} ${lastName}`;
-            localStorage.setItem('dueDate', dueDate);
+            const currentUser = localStorage.getItem('currentUser');
+            const userKey = `user_${currentUser}`;
+            const userData = JSON.parse(localStorage.getItem(userKey) || '{}');
+            const users = JSON.parse(localStorage.getItem('momcare_users') || '{}');
+            
+            // Get name from sign-up data
+            const userSignUpData = Object.values(users).find(user => user.username === currentUser);
+            const fullName = userSignUpData ? userSignUpData.name : currentUser;
+            
+            userData.motherName = fullName;
+            userData.dueDate = dueDate;
+            localStorage.setItem(userKey, JSON.stringify(userData));
             localStorage.setItem('motherName', fullName);
+            localStorage.setItem('dueDate', dueDate);
             updatePregnancyInfo();
             setupSection.hidden = true;
             pregnancyInfo.hidden = false;
         }
     });
     
-    // Calculate pregnancy week and days
+    // Calculate pregnancy week and days (extends to 5 years post-birth)
     function calculatePregnancy(dueDate) {
         const due = new Date(dueDate);
         const today = new Date();
@@ -139,6 +275,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const daysSinceStart = Math.floor((today - pregnancyStart) / (24 * 60 * 60 * 1000));
         const week = Math.floor(daysSinceStart / 7) + 1;
         const daysLeft = Math.ceil((due - today) / (24 * 60 * 60 * 1000));
+        
+        // If baby is born (past due date), calculate age
+        if (today >= due) {
+            const daysSinceBirth = Math.floor((today - due) / (24 * 60 * 60 * 1000));
+            const monthsOld = Math.floor(daysSinceBirth / 30.44); // Average days per month
+            const yearsOld = Math.floor(monthsOld / 12);
+            
+            if (yearsOld >= 5) {
+                return { week: 'Complete', daysLeft: 'Journey Complete', trimester: 'Child (5+ years)', monthsOld, yearsOld };
+            }
+            
+            return { week: 'Born', daysLeft: `${monthsOld} months old`, trimester: yearsOld > 0 ? `Child (${yearsOld}y ${monthsOld % 12}m)` : `Baby (${monthsOld}m)`, monthsOld, yearsOld };
+        }
         
         return { week: Math.max(1, Math.min(42, week)), daysLeft, trimester: getTrimester(week) };
     }
@@ -169,8 +318,8 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('dashboardDaysLeft').textContent = pregnancy.daysLeft;
             
             // Update milestone and baby size
-            updateMilestone(pregnancy.week);
-            updateBabySize(pregnancy.week);
+            updateMilestone(pregnancy.week, pregnancy.monthsOld, pregnancy.yearsOld);
+            updateBabySize(pregnancy.week, pregnancy.monthsOld, pregnancy.yearsOld);
             
             // Store current week for other features
             localStorage.setItem('currentWeek', pregnancy.week);
@@ -180,7 +329,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    function updateMilestone(week) {
+    function updateMilestone(week, monthsOld = 0, yearsOld = 0) {
         const milestones = {
             1: '🌱 Conception and implantation',
             4: '💗 Heart begins to beat',
@@ -195,13 +344,35 @@ document.addEventListener('DOMContentLoaded', function() {
             40: '🎊 Due date is here!'
         };
         
-        const milestoneWeeks = Object.keys(milestones).map(Number).sort((a, b) => a - b);
-        const currentMilestone = milestoneWeeks.find(w => week <= w) || 40;
-        
-        document.getElementById('currentMilestone').innerHTML = `
-            <h4>Week ${currentMilestone}</h4>
-            <p>${milestones[currentMilestone]}</p>
-        `;
+        if (week === 'Born' || week === 'Complete') {
+            const postBirthMilestones = {
+                0: '🎉 Baby is born! Welcome to parenthood',
+                3: '😊 Baby starts smiling and recognizing faces',
+                6: '🥰 Baby can sit up and eat solid foods',
+                12: '🚼 First steps and first words',
+                24: '🗣️ Talking in sentences and potty training',
+                36: '🎲 Playing with others and learning colors',
+                48: '🏭 Ready for preschool and writing letters',
+                60: '🎓 Starting kindergarten - big kid now!'
+            };
+            
+            const totalMonths = yearsOld * 12 + (monthsOld % 12);
+            const milestoneMonths = Object.keys(postBirthMilestones).map(Number).sort((a, b) => a - b);
+            const currentMilestone = milestoneMonths.find(m => totalMonths <= m) || 60;
+            
+            document.getElementById('currentMilestone').innerHTML = `
+                <h4>${yearsOld > 0 ? `${yearsOld} years ${monthsOld % 12} months` : `${monthsOld} months`}</h4>
+                <p>${postBirthMilestones[currentMilestone]}</p>
+            `;
+        } else {
+            const milestoneWeeks = Object.keys(milestones).map(Number).sort((a, b) => a - b);
+            const currentMilestone = milestoneWeeks.find(w => week <= w) || 40;
+            
+            document.getElementById('currentMilestone').innerHTML = `
+                <h4>Week ${currentMilestone}</h4>
+                <p>${milestones[currentMilestone]}</p>
+            `;
+        }
     }
     
     // Health tracking form
@@ -284,6 +455,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const encryptedData = btoa(JSON.stringify({ ...trackingData, timestamp: new Date().toISOString() }));
         existingData.push(encryptedData);
         localStorage.setItem('healthTracking', JSON.stringify(existingData));
+        
+        // Save to user-specific storage
+        const currentUser = localStorage.getItem('currentUser');
+        if (currentUser) {
+            const userKey = `user_${currentUser}`;
+            const userData = JSON.parse(localStorage.getItem(userKey) || '{}');
+            userData.healthTracking = existingData;
+            localStorage.setItem(userKey, JSON.stringify(userData));
+        }
         
         // Update stats and recent activity
         updateStats();
@@ -389,6 +569,228 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // Profile form functionality
+    const profileForm = document.getElementById('profileForm');
+    profileForm?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const profileData = Object.fromEntries(formData);
+        
+        // Validate required profile fields
+        const requiredFields = ['profileFirstName', 'profileLastName', 'profileDateOfBirth', 'kinFirstName', 'kinLastName', 'kinRelationship', 'kinGender', 'kinPhone'];
+        const missingFields = requiredFields.filter(field => !profileData[field] || profileData[field].trim() === '');
+        
+        if (missingFields.length > 0) {
+            alert('Please fill in all required fields to complete your profile.');
+            return;
+        }
+        
+        localStorage.setItem('userProfile', JSON.stringify(profileData));
+        
+        // Save to user-specific storage
+        const currentUser = localStorage.getItem('currentUser');
+        if (currentUser) {
+            const userKey = `user_${currentUser}`;
+            const userData = JSON.parse(localStorage.getItem(userKey) || '{}');
+            userData.profile = profileData;
+            localStorage.setItem(userKey, JSON.stringify(userData));
+        }
+        
+        const submitBtn = this.querySelector('.submit-btn');
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = '✅ Profile Saved!';
+        submitBtn.style.background = '#28a745';
+        
+        setTimeout(() => {
+            submitBtn.textContent = originalText;
+            submitBtn.style.background = '';
+            // Redirect to dashboard after profile completion
+            showDashboardTab();
+        }, 2000);
+    });
+    
+    // Children management
+    let childCount = 0;
+    const maxChildren = 10;
+    
+    document.getElementById('addChildBtn')?.addEventListener('click', function() {
+        if (childCount >= maxChildren) {
+            alert('Maximum 10 children allowed');
+            return;
+        }
+        
+        childCount++;
+        const childDiv = document.createElement('div');
+        childDiv.className = 'child-entry';
+        childDiv.style.cssText = 'border:1px solid #ddd;padding:1rem;margin-bottom:1rem;border-radius:8px';
+        childDiv.innerHTML = `
+            <h4>Child ${childCount}</h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>First Name:</label>
+                    <input type="text" name="child${childCount}FirstName" maxlength="30">
+                </div>
+                <div class="form-group">
+                    <label>Last Name:</label>
+                    <input type="text" name="child${childCount}LastName" maxlength="30">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Date of Birth:</label>
+                    <input type="date" name="child${childCount}DateOfBirth">
+                </div>
+                <div class="form-group">
+                    <label>Gender:</label>
+                    <select name="child${childCount}Gender">
+                        <option value="">Select</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                    </select>
+                </div>
+            </div>
+            <button type="button" onclick="removeChild(this)" style="background:#dc3545;color:white;border:none;padding:0.5rem;border-radius:4px">Remove Child</button>
+        `;
+        document.getElementById('childrenContainer').appendChild(childDiv);
+    });
+    
+    window.removeChild = function(button) {
+        button.parentElement.remove();
+        childCount--;
+    };
+    
+    // Load profile data
+    function loadProfile() {
+        const profileData = JSON.parse(localStorage.getItem('userProfile') || '{}');
+        const currentUser = localStorage.getItem('currentUser');
+        const users = JSON.parse(localStorage.getItem('momcare_users') || '{}');
+        const userSignUpData = Object.values(users).find(user => user.username === currentUser);
+        
+        // Auto-populate from sign-up data if profile is empty
+        if (userSignUpData && Object.keys(profileData).length === 0) {
+            document.getElementById('profileFirstName').value = userSignUpData.firstName || '';
+            document.getElementById('profileLastName').value = userSignUpData.lastName || '';
+            document.getElementById('profilePhone').value = userSignUpData.phone || '';
+            document.getElementById('profileGender').value = 'female';
+            
+            // Set date of birth from sign-up data
+            if (userSignUpData.dateOfBirth) {
+                document.getElementById('profileDateOfBirth').value = userSignUpData.dateOfBirth;
+            }
+        } else {
+            // Load saved profile data
+            Object.keys(profileData).forEach(key => {
+                const input = document.getElementById(key) || document.querySelector(`[name="${key}"]`);
+                if (input) input.value = profileData[key];
+            });
+        }
+        
+        // Load children data
+        for (let i = 1; i <= 10; i++) {
+            if (profileData[`child${i}FirstName`]) {
+                document.getElementById('addChildBtn').click();
+            }
+        }
+    }
+    
+    // Immunization tracking functionality
+    const immunizationForm = document.getElementById('immunizationForm');
+    immunizationForm?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const vaccineData = Object.fromEntries(formData);
+        vaccineData.id = Date.now();
+        vaccineData.timestamp = new Date().toISOString();
+        
+        const vaccines = JSON.parse(localStorage.getItem('vaccinations') || '[]');
+        vaccines.push(vaccineData);
+        localStorage.setItem('vaccinations', JSON.stringify(vaccines));
+        
+        // Save to user-specific storage
+        const currentUser = localStorage.getItem('currentUser');
+        if (currentUser) {
+            const userKey = `user_${currentUser}`;
+            const userData = JSON.parse(localStorage.getItem(userKey) || '{}');
+            userData.vaccinations = vaccines;
+            localStorage.setItem(userKey, JSON.stringify(userData));
+        }
+        
+        updateVaccineSchedule();
+        updateImmunizationProgress();
+        
+        const submitBtn = this.querySelector('.submit-btn');
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = '✅ Vaccination Added!';
+        submitBtn.style.background = '#28a745';
+        
+        setTimeout(() => {
+            submitBtn.textContent = originalText;
+            submitBtn.style.background = '';
+        }, 2000);
+        
+        this.reset();
+    });
+    
+    function updateVaccineSchedule() {
+        const vaccines = JSON.parse(localStorage.getItem('vaccinations') || '[]');
+        const scheduleDiv = document.getElementById('vaccineSchedule');
+        
+        if (vaccines.length === 0) {
+            scheduleDiv.innerHTML = '<p>No vaccination records yet. Add your first vaccination above!</p>';
+            return;
+        }
+        
+        scheduleDiv.innerHTML = vaccines.map(vaccine => `
+            <div style="padding:1rem;background:#f8f9fa;border-radius:8px;margin-bottom:1rem;border-left:4px solid #28a745">
+                <h4>${vaccine.vaccineName} - Dose ${vaccine.doseNumber}</h4>
+                <p><strong>Date:</strong> ${new Date(vaccine.vaccineDate).toLocaleDateString()}</p>
+                <p><strong>Age:</strong> ${vaccine.childAge}</p>
+                ${vaccine.vaccineProvider ? `<p><strong>Provider:</strong> ${vaccine.vaccineProvider}</p>` : ''}
+                ${vaccine.vaccineNotes ? `<p><strong>Notes:</strong> ${vaccine.vaccineNotes}</p>` : ''}
+            </div>
+        `).join('');
+    }
+    
+    function updateImmunizationProgress() {
+        const vaccines = JSON.parse(localStorage.getItem('vaccinations') || '[]');
+        const progressDiv = document.getElementById('immunizationProgress');
+        
+        const requiredVaccines = {
+            'hepatitisB': { required: 3, name: 'Hepatitis B' },
+            'dtap': { required: 4, name: 'DTaP' },
+            'hib': { required: 3, name: 'Hib' },
+            'polio': { required: 4, name: 'Polio' },
+            'pcv': { required: 4, name: 'PCV' },
+            'mmr': { required: 2, name: 'MMR' },
+            'varicella': { required: 2, name: 'Varicella' },
+            'hepatitisA': { required: 2, name: 'Hepatitis A' }
+        };
+        
+        let progressHTML = '<h4>Vaccination Progress:</h4>';
+        
+        Object.keys(requiredVaccines).forEach(vaccineKey => {
+            const received = vaccines.filter(v => v.vaccineName === vaccineKey).length;
+            const required = requiredVaccines[vaccineKey].required;
+            const percentage = Math.min((received / required) * 100, 100);
+            
+            progressHTML += `
+                <div style="margin-bottom:1rem">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:0.25rem">
+                        <span>${requiredVaccines[vaccineKey].name}</span>
+                        <span>${received}/${required}</span>
+                    </div>
+                    <div style="background:#e0e0e0;border-radius:10px;height:20px;overflow:hidden">
+                        <div style="background:${percentage === 100 ? '#28a745' : '#ff9800'};height:100%;width:${percentage}%;transition:width 0.3s ease"></div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        progressDiv.innerHTML = progressHTML;
+    }
+    
     // Community post functionality
     const postBtn = document.querySelector('.post-btn');
     const newPostTextarea = document.getElementById('newPost');
@@ -433,7 +835,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         let isValid = true;
         
-        if (!validateName(doctorNameInput.value)) {
+        const doctorName = sanitizeInput(doctorNameInput.value);
+        if (!doctorName || doctorName.length < 2 || doctorName.length > 100) {
             showError(doctorNameInput, 'Doctor name is required (2-100 characters)');
             isValid = false;
         } else {
@@ -466,14 +869,26 @@ document.addEventListener('DOMContentLoaded', function() {
         const formData = new FormData(this);
         const appointmentData = Object.fromEntries(formData);
         
-        // Sanitize inputs
+        // Sanitize inputs and save doctor to suggestions
         appointmentData.doctorName = sanitizeInput(appointmentData.doctorName);
         appointmentData.appointmentLocation = sanitizeInput(appointmentData.appointmentLocation || '');
         appointmentData.appointmentNotes = sanitizeInput(appointmentData.appointmentNotes || '');
         
+        // Save doctor name for future suggestions
+        saveDoctorSuggestion(appointmentData.doctorName);
+        
         const appointments = JSON.parse(localStorage.getItem('appointments') || '[]');
         appointments.push({ ...appointmentData, id: Date.now() });
         localStorage.setItem('appointments', JSON.stringify(appointments));
+        
+        // Save to user-specific storage
+        const currentUser = localStorage.getItem('currentUser');
+        if (currentUser) {
+            const userKey = `user_${currentUser}`;
+            const userData = JSON.parse(localStorage.getItem(userKey) || '{}');
+            userData.appointments = appointments;
+            localStorage.setItem(userKey, JSON.stringify(userData));
+        }
         
         updateAppointmentsList();
         this.reset();
@@ -509,6 +924,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         updateStats();
         updateAppointmentsList();
+        updateDoctorDatalist();
+        loadProfile();
+        updateVaccineSchedule();
+        updateImmunizationProgress();
         
         // Set today's date as default
         if (trackingDate) {
@@ -570,9 +989,9 @@ document.addEventListener('DOMContentLoaded', function() {
         URL.revokeObjectURL(url);
     });
     
-    // Baby size updates
-    function updateBabySize(week) {
-        const sizes = {
+    // Baby size updates (pregnancy to 5 years)
+    function updateBabySize(week, monthsOld = 0, yearsOld = 0) {
+        const pregnancySizes = {
             4: 'poppy seed 🌱',
             8: 'raspberry 🫐',
             12: 'lime 🟢',
@@ -585,10 +1004,27 @@ document.addEventListener('DOMContentLoaded', function() {
             40: 'pumpkin 🎃'
         };
         
-        const sizeWeeks = Object.keys(sizes).map(Number).sort((a, b) => a - b);
-        const currentSize = sizeWeeks.find(w => week <= w) || 40;
+        const postBirthSizes = {
+            0: 'newborn baby 👶',
+            3: '3-month-old baby 🍼',
+            6: '6-month-old baby 👶',
+            12: '1-year-old toddler 🚼',
+            24: '2-year-old child 🧒',
+            36: '3-year-old child 👦👧',
+            48: '4-year-old child 🧒',
+            60: '5-year-old child 👦👧'
+        };
         
-        document.getElementById('babySize').innerHTML = `👶 Baby is the size of a ${sizes[currentSize]}`;
+        if (week === 'Born' || week === 'Complete') {
+            const totalMonths = yearsOld * 12 + (monthsOld % 12);
+            const milestones = Object.keys(postBirthSizes).map(Number).sort((a, b) => a - b);
+            const currentMilestone = milestones.find(m => totalMonths <= m) || 60;
+            document.getElementById('babySize').innerHTML = `👶 Your child is a ${postBirthSizes[currentMilestone]}`;
+        } else {
+            const sizeWeeks = Object.keys(pregnancySizes).map(Number).sort((a, b) => a - b);
+            const currentSize = sizeWeeks.find(w => week <= w) || 40;
+            document.getElementById('babySize').innerHTML = `👶 Baby is the size of a ${pregnancySizes[currentSize]}`;
+        }
     }
     
     // Notification system
@@ -596,6 +1032,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
         notification.textContent = message;
+        notification.style.cssText = 'position:fixed;top:20px;right:20px;background:#e91e63;color:white;padding:1rem;border-radius:8px;z-index:9999';
         document.body.appendChild(notification);
         
         setTimeout(() => {
@@ -630,8 +1067,117 @@ document.addEventListener('DOMContentLoaded', function() {
         document.documentElement.setAttribute('data-font-size', savedFontSize);
     }
     
+    // Populate birth year dropdown
+    const birthYearSelect = document.getElementById('birthYear');
+    if (birthYearSelect) {
+        const currentYear = new Date().getFullYear();
+        for (let year = currentYear - 9; year >= currentYear - 80; year--) {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            birthYearSelect.appendChild(option);
+        }
+    }
+    
+    // Check profile completion on app load
+    setTimeout(() => {
+        if (localStorage.getItem('userSignedIn') === 'true' && !isProfileComplete()) {
+            showProfileTab();
+        }
+    }, 100);
+    
     init();
 });
+
+// Authentication helper functions
+function showSignUp() {
+    document.getElementById('signInModal').style.display = 'none';
+    document.getElementById('signUpModal').style.display = 'flex';
+}
+
+function showSignIn() {
+    document.getElementById('signUpModal').style.display = 'none';
+    document.getElementById('signInModal').style.display = 'flex';
+}
+
+function signOut() {
+    clearAllForms();
+    localStorage.removeItem('userSignedIn');
+    localStorage.removeItem('currentUser');
+    document.getElementById('mainApp').style.display = 'none';
+    document.getElementById('signInModal').style.display = 'flex';
+    showNotification('Signed out successfully', 'info');
+}
+
+function clearAllForms() {
+    // Clear all form inputs
+    document.querySelectorAll('input, select, textarea').forEach(input => {
+        if (input.type === 'checkbox' || input.type === 'radio') {
+            input.checked = false;
+        } else {
+            input.value = '';
+        }
+    });
+    
+    // Reset setup section visibility
+    const setupSection = document.getElementById('setupSection');
+    const pregnancyInfo = document.getElementById('pregnancyInfo');
+    if (setupSection && pregnancyInfo) {
+        setupSection.hidden = false;
+        pregnancyInfo.hidden = true;
+    }
+    
+    // Clear dynamic content
+    document.getElementById('recentActivity').innerHTML = '<p>No recent activity. Start tracking your health!</p>';
+    document.getElementById('appointmentsList').innerHTML = '<p>No appointments scheduled. Add your first appointment above!</p>';
+    document.getElementById('vaccineSchedule').innerHTML = '<p>No vaccination records yet. Add your first vaccination above!</p>';
+    document.getElementById('childrenContainer').innerHTML = '';
+    
+    // Reset counters
+    childCount = 0;
+}
+
+function loadUserData(username) {
+    const userKey = `user_${username}`;
+    const userData = JSON.parse(localStorage.getItem(userKey) || '{}');
+    const users = JSON.parse(localStorage.getItem('momcare_users') || '{}');
+    const userSignUpData = Object.values(users).find(user => user.username === username);
+    
+    // Set welcome message with sign-up name
+    if (userSignUpData) {
+        const welcomeName = userSignUpData.name || `${userSignUpData.firstName} ${userSignUpData.lastName}`;
+        document.querySelector('.welcome-card h2').textContent = `Welcome Back, ${welcomeName}! 👋`;
+    }
+    
+    if (userData.motherName) {
+        localStorage.setItem('motherName', userData.motherName);
+    }
+    if (userData.dueDate) {
+        localStorage.setItem('dueDate', userData.dueDate);
+        updatePregnancyInfo();
+    }
+    
+    // Load user-specific data
+    if (userData.profile) {
+        localStorage.setItem('userProfile', JSON.stringify(userData.profile));
+        loadProfile();
+    }
+    if (userData.healthTracking) {
+        localStorage.setItem('healthTracking', JSON.stringify(userData.healthTracking));
+    }
+    if (userData.appointments) {
+        localStorage.setItem('appointments', JSON.stringify(userData.appointments));
+    }
+    if (userData.vaccinations) {
+        localStorage.setItem('vaccinations', JSON.stringify(userData.vaccinations));
+    }
+    
+    // Refresh displays
+    updateStats();
+    updateAppointmentsList();
+    updateVaccineSchedule();
+    updateImmunizationProgress();
+}
 
 // Modal functions
 function openKickCounter() {
@@ -832,6 +1378,227 @@ function assessRisk() {
     
     document.getElementById('riskResult').innerHTML = 
         `<div class="risk-indicator risk-${riskLevel}">${message}</div>`;
+}
+
+// Health data export functions
+function exportHealthData() {
+    const healthData = JSON.parse(localStorage.getItem('healthTracking') || '[]');
+    const decodedData = healthData.map(encryptedEntry => {
+        try {
+            return JSON.parse(atob(encryptedEntry));
+        } catch {
+            return encryptedEntry;
+        }
+    });
+    
+    const csvContent = convertToCSV(decodedData);
+    downloadFile(csvContent, 'health-tracking-data.csv', 'text/csv');
+}
+
+function exportHealthPDF() {
+    const healthData = JSON.parse(localStorage.getItem('healthTracking') || '[]');
+    const decodedData = healthData.map(encryptedEntry => {
+        try {
+            return JSON.parse(atob(encryptedEntry));
+        } catch {
+            return encryptedEntry;
+        }
+    });
+    
+    const htmlContent = generateHealthReport(decodedData);
+    downloadFile(htmlContent, 'health-report.html', 'text/html');
+}
+
+function convertToCSV(data) {
+    if (data.length === 0) return 'No health data available';
+    
+    const headers = ['Date', 'Week', 'Weight (kg)', 'Blood Pressure', 'Symptoms', 'Baby Movement', 'Mood', 'Notes'];
+    const csvRows = [headers.join(',')];
+    
+    data.forEach(entry => {
+        const row = [
+            entry.trackingDate || '',
+            entry.pregnancyWeek || '',
+            entry.currentWeight || '',
+            entry.bloodPressure || '',
+            Array.isArray(entry.symptoms) ? entry.symptoms.join('; ') : '',
+            entry.babyMovement || '',
+            entry.moodRating || '',
+            (entry.healthNotes || '').replace(/,/g, ';')
+        ];
+        csvRows.push(row.join(','));
+    });
+    
+    return csvRows.join('\n');
+}
+
+function generateHealthReport(data) {
+    const motherName = localStorage.getItem('motherName') || 'Patient';
+    const dueDate = localStorage.getItem('dueDate') || 'Not set';
+    
+    let html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Health Report - ${motherName}</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { background: #ff69b4; color: white; padding: 20px; text-align: center; }
+            .summary { margin: 20px 0; padding: 15px; background: #f8f9fa; }
+            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background: #ff69b4; color: white; }
+            .footer { margin-top: 30px; font-size: 12px; color: #666; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>🤱 MomCare Health Report</h1>
+            <p>Patient: ${motherName}</p>
+            <p>Due Date: ${new Date(dueDate).toLocaleDateString()}</p>
+            <p>Report Generated: ${new Date().toLocaleDateString()}</p>
+        </div>
+        
+        <div class="summary">
+            <h2>Summary</h2>
+            <p>Total Health Records: ${data.length}</p>
+            <p>Date Range: ${data.length > 0 ? new Date(data[0].trackingDate).toLocaleDateString() + ' - ' + new Date(data[data.length-1].trackingDate).toLocaleDateString() : 'No data'}</p>
+        </div>
+        
+        <h2>Health Tracking Records</h2>
+        <table>
+            <tr>
+                <th>Date</th>
+                <th>Week</th>
+                <th>Weight (kg)</th>
+                <th>Blood Pressure</th>
+                <th>Symptoms</th>
+                <th>Baby Movement</th>
+                <th>Mood (1-10)</th>
+                <th>Notes</th>
+            </tr>`;
+    
+    data.forEach(entry => {
+        html += `
+            <tr>
+                <td>${new Date(entry.trackingDate).toLocaleDateString()}</td>
+                <td>${entry.pregnancyWeek}</td>
+                <td>${entry.currentWeight}</td>
+                <td>${entry.bloodPressure}</td>
+                <td>${Array.isArray(entry.symptoms) ? entry.symptoms.join(', ') : ''}</td>
+                <td>${entry.babyMovement || ''}</td>
+                <td>${entry.moodRating || ''}</td>
+                <td>${entry.healthNotes || ''}</td>
+            </tr>`;
+    });
+    
+    html += `
+        </table>
+        
+        <div class="footer">
+            <p>This report is generated from MomCare pregnancy tracking application.</p>
+            <p>Please share this report with your healthcare provider for medical consultation.</p>
+        </div>
+    </body>
+    </html>`;
+    
+    return html;
+}
+
+function downloadFile(content, filename, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    showNotification(`${filename} downloaded successfully! 📄`, 'success');
+}
+
+// Doctor suggestions functionality
+function saveDoctorSuggestion(doctorName) {
+    if (!doctorName || doctorName.length < 2) return;
+    
+    const suggestions = JSON.parse(localStorage.getItem('doctorSuggestions') || '[]');
+    if (!suggestions.includes(doctorName)) {
+        suggestions.push(doctorName);
+        localStorage.setItem('doctorSuggestions', JSON.stringify(suggestions));
+        updateDoctorDatalist();
+    }
+}
+
+function updateDoctorDatalist() {
+    const datalist = document.getElementById('doctorSuggestions');
+    const savedSuggestions = JSON.parse(localStorage.getItem('doctorSuggestions') || '[]');
+    
+    // Add saved suggestions to existing options
+    savedSuggestions.forEach(suggestion => {
+        const existingOption = Array.from(datalist.options).find(option => option.value === suggestion);
+        if (!existingOption) {
+            const option = document.createElement('option');
+            option.value = suggestion;
+            datalist.appendChild(option);
+        }
+    });
+}
+
+// Profile completion check
+function isProfileComplete() {
+    const profileData = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    const requiredFields = ['profileFirstName', 'profileLastName', 'profileDateOfBirth', 'kinFirstName', 'kinLastName', 'kinRelationship', 'kinGender', 'kinPhone'];
+    return requiredFields.every(field => profileData[field] && profileData[field].trim() !== '');
+}
+
+function showProfileTab() {
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    // Remove active class from all tabs
+    tabBtns.forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-selected', 'false');
+    });
+    tabContents.forEach(content => {
+        content.classList.remove('active');
+        content.hidden = true;
+    });
+    
+    // Activate profile tab
+    const profileBtn = document.querySelector('[data-tab="profile"]');
+    const profileContent = document.getElementById('profile-tab');
+    if (profileBtn && profileContent) {
+        profileBtn.classList.add('active');
+        profileBtn.setAttribute('aria-selected', 'true');
+        profileContent.classList.add('active');
+        profileContent.hidden = false;
+    }
+}
+
+function showDashboardTab() {
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    // Remove active class from all tabs
+    tabBtns.forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-selected', 'false');
+    });
+    tabContents.forEach(content => {
+        content.classList.remove('active');
+        content.hidden = true;
+    });
+    
+    // Activate dashboard tab
+    const dashboardBtn = document.querySelector('[data-tab="dashboard"]');
+    const dashboardContent = document.getElementById('dashboard-tab');
+    if (dashboardBtn && dashboardContent) {
+        dashboardBtn.classList.add('active');
+        dashboardBtn.setAttribute('aria-selected', 'true');
+        dashboardContent.classList.add('active');
+        dashboardContent.hidden = false;
+    }
 }
 
 // Close modals when clicking outside
