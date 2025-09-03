@@ -1,1 +1,0 @@
-This is a website to aid and track progress of expectant mothers and improve maternal health care, reduce childbirth complications, and address emergency issues that mothers face with doctors and the community ready to embrace and support pregnant mothers.
